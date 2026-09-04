@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>用 AWS Spot GPU 打造低成本、一键、自助的推理测试环境</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel-2: #1c2431;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #9aa7b4;
+      --accent: #ff9900;
+      --accent-2: #4f9dff;
+      --green: #3fb950;
+      --max: 860px;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC",
+        "WenQuanYi Micro Hei", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.75;
+      font-size: 17px;
+    }
+    .wrap { max-width: var(--max); margin: 0 auto; padding: 0 20px 80px; }
+    header.hero {
+      background: linear-gradient(135deg, #12233b 0%, #0d1117 60%);
+      border-bottom: 1px solid var(--border);
+      padding: 56px 20px 40px;
+    }
+    header.hero .inner { max-width: var(--max); margin: 0 auto; }
+    .kicker {
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: .06em;
+      font-size: 13px;
+      text-transform: uppercase;
+      margin: 0 0 10px;
+    }
+    h1 {
+      font-size: 34px;
+      line-height: 1.3;
+      margin: 0 0 16px;
+      font-weight: 700;
+    }
+    .lede { color: var(--muted); font-size: 18px; margin: 0; }
+    .meta { color: var(--muted); font-size: 14px; margin-top: 18px; }
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 12px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-right: 8px;
+    }
+    h2 {
+      font-size: 25px;
+      margin: 48px 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 { font-size: 19px; margin: 30px 0 8px; }
+    p { margin: 12px 0; }
+    a { color: var(--accent-2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul, ol { padding-left: 24px; }
+    li { margin: 8px 0; }
+    code {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 1px 6px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: .9em;
+      color: #ffd9a8;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin: 16px 0;
+    }
+    .pain {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+    }
+    .pain h3 { margin-top: 0; }
+    .fix { color: var(--green); font-weight: 600; }
+    figure { margin: 24px 0; }
+    figcaption { color: var(--muted); font-size: 14px; text-align: center; margin-top: 10px; }
+    .diagram {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      overflow-x: auto;
+    }
+    .diagram svg { display: block; width: 100%; height: auto; min-width: 720px; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 15px; }
+    th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+    th { background: var(--panel-2); }
+    .note {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--muted);
+      font-size: 15px;
+      margin: 16px 0;
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      margin-top: 56px;
+      padding-top: 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    footer .en { color: #7d8894; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="inner">
+      <p class="kicker">AWS Sample · Spot GPU · SGLang</p>
+      <h1>低成本、一键、自助：用 AWS Spot GPU 打造短时推理测试环境</h1>
+      <p class="lede">
+        从浏览器里点一下，就在 Spot GPU 实例（H200 / B200 / B300）上拉起一套短时的
+        SGLang 推理栈，跑完临时测试、收到飞书（Lark）通知，用完即拆。无需 AWS 控制台操作，
+        无需漫长的容量预留等待，每一次实验都被记录下来供日后审计。
+      </p>
+      <p class="meta">
+        <span class="badge">开源示例 / AWS Sample</span>
+        <span class="badge">许可证 MIT-0</span>
+        <span class="badge">配套博客代码库</span>
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <h2 id="intro">这是什么</h2>
+    <p>
+      <strong>sample-spot-gpu-inference-lab</strong> 是一个「低成本、一键、自助」的
+      AWS Spot GPU 推理测试环境。它把一整套可运行的组件打包在一起：一个 AWS CDK 控制面、
+      一个 React 自助门户，以及四个 Python Lambda（<code>api</code>、<code>poller</code>、
+      <code>deployer</code>、<code>orphan-cleaner</code>），让你可以在自己的账户里复现这套模式。
+    </p>
+    <p>
+      业务用户在网页上选好实例类型和部署方案，点一次按钮，平台就会自动在 Spot GPU 实例上
+      通过 <code>docker compose</code> 部署 SGLang 推理服务，就绪后推送飞书通知。
+    </p>
+    <div class="note">
+      本仓库是一篇博客文章的配套代码库，作为 <strong>AWS 示例（sample）</strong> 提供，
+      而不是受支持的产品（not a supported product），以 <strong>MIT-0</strong> 许可证发布。
+    </div>
+
+    <h2 id="pain">为什么要做这个：三大痛点</h2>
+    <p>需要在 GPU 上对大模型推理做基准或冒烟测试的团队，反复撞上同样的三堵墙。这个示例就是为了逐一击破它们。</p>
+
+    <div class="pain">
+      <h3>痛点一：GPU 资源紧缺，而测试往往是短时、临时的需求</h3>
+      <p>
+        一次测试可能只需要 <strong>约 2 小时</strong> 的 GPU 时间，但一个 Capacity Block
+        容量预留通常意味着要 <strong>至少等 1 天</strong>。为了跑一个两小时的测试而等上一天，行不通。
+      </p>
+      <p class="fix">
+        → 本方案使用 <strong>Spot GPU 容量</strong>，配合一个由 CDK 部署的
+        <strong>容量轮询器（poller）</strong>，每分钟扫描各区域 / 可用区，一旦出现容量立即抢占启动
+        （快速路径，无需预留等待）。
+      </p>
+    </div>
+
+    <div class="pain">
+      <h3>痛点二：业务 / LOB 用户不熟悉 AWS，走中台工单又慢</h3>
+      <p>
+        把每一次实验都通过中台平台团队来走流程，会给本该自助完成的动作平添数天的延迟。
+      </p>
+      <p class="fix">
+        → 本方案提供一个 <strong>React 自助 Web 门户</strong>：用户选好实例类型和部署方案，
+        点一次，平台就负责开机、部署并把结果回报给他，全程无需登录 AWS 控制台。
+      </p>
+    </div>
+
+    <div class="pain">
+      <h3>痛点三：反复试验需要留痕与审计</h3>
+      <p>
+        当同一个测试被跑了很多遍，你需要一份持久的记录：跑了什么、什么时候跑的、结果如何。
+      </p>
+      <p class="fix">
+        → 本方案把每一次预约和状态变更都写入 <strong>DynamoDB</strong>，提供站内
+        <strong>History 历史页面</strong>，并把状态变更通知推送到
+        <strong>飞书（Lark）机器人</strong>，从而在产品内和聊天侧都留下可追溯的轨迹。
+      </p>
+    </div>
+
+    <h2 id="solution">解决方案总览</h2>
+    <p>三条主线分别对应上面的三个痛点：</p>
+    <ul>
+      <li>
+        <strong>Spot 容量 + 容量轮询器（快速路径）：</strong>
+        不去排队等 Capacity Block，而是用 Spot 容量加一个由 CDK 部署的轮询器，
+        每分钟扫描区域 / 可用区，容量一出现就抢占启动，没有预留等待。
+      </li>
+      <li>
+        <strong>React 自助门户（一键下单）：</strong>
+        业务用户在门户里选实例、选部署方案、一键提交，无需 AWS 技能。
+      </li>
+      <li>
+        <strong>DynamoDB 记录 + History 页面 + 飞书通知（留痕 / 审计）：</strong>
+        每次预约与状态变更持久化到 DynamoDB，站内 History 页面可查，
+        飞书（Lark）机器人在状态变更时推送消息。
+      </li>
+    </ul>
+
+    <h2 id="architecture">架构走读</h2>
+    <p>
+      平台本身是一个 AWS CDK 栈：静态 SPA（S3 + CloudFront）、API（API Gateway + Lambda）、
+      DynamoDB 状态存储，以及 <strong>四个 Python Lambda</strong>（<code>api</code>、
+      <code>poller</code>、<code>deployer</code>、<code>orphan-cleaner</code>），由 EventBridge
+      定时器协调。Spot GPU 实例在 NVMe 上以 <code>docker-compose</code> 运行 SGLang 拓扑，
+      每一次状态变更都会扇出到飞书 webhook。
+    </p>
+
+    <figure>
+      <div class="diagram" role="img" aria-label="架构图：用户经 CloudFront 访问 S3 上的 SPA 和 API Gateway；API Gateway 经 Lambda 授权器（读取 SSM SecureString）到 api Lambda 再到三张 DynamoDB 表；EventBridge 分别以 1 分钟、2 分钟、15 分钟触发 poller、deployer、orphan-cleaner；poller 直接启动 Spot GPU 实例并异步调用 deployer；deployer 通过 SSM 配置 NVMe RAID 并 docker compose up，从 S3 compose 桶拉取拓扑；所有状态变更 Lambda 推送飞书 webhook，并以 SNS 作为兜底。">
+        <svg viewBox="0 0 960 720" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+          <defs>
+            <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+              <path d="M0,0 L9,4.5 L0,9 z" fill="#8b98a5"/>
+            </marker>
+            <style>
+              .grp { fill: none; stroke: #3a4657; stroke-dasharray: 5 4; rx: 10; }
+              .glab { fill: #7f8ea3; font-size: 12px; }
+              .node { rx: 8; stroke-width: 1.5; }
+              .aws { fill: #14202f; stroke: #ff9900; }
+              .lam { fill: #1a1330; stroke: #d19bff; }
+              .ddb { fill: #0f1f2e; stroke: #4f9dff; }
+              .ext { fill: #142218; stroke: #3fb950; }
+              .sched { fill: #241a0f; stroke: #ffb454; }
+              .t { fill: #e6edf3; font-size: 12.5px; }
+              .tc { fill: #e6edf3; font-size: 12.5px; text-anchor: middle; }
+              .sub { fill: #9aa7b4; font-size: 11px; text-anchor: middle; }
+              .edge { stroke: #8b98a5; stroke-width: 1.4; fill: none; }
+              .edash { stroke: #8b98a5; stroke-width: 1.4; fill: none; stroke-dasharray: 4 3; }
+              .elab { fill: #aeb9c6; font-size: 10.5px; }
+            </style>
+          </defs>
+
+          <!-- User -->
+          <rect class="node aws" x="30" y="24" width="150" height="46"/>
+          <text class="tc" x="105" y="52">用户 / 浏览器</text>
+
+          <!-- Edge group -->
+          <rect class="grp" x="220" y="10" width="330" height="86"/>
+          <text class="glab" x="230" y="26">Edge 与静态分发</text>
+          <rect class="node aws" x="235" y="34" width="140" height="46"/>
+          <text class="tc" x="305" y="62">CloudFront</text>
+          <rect class="node aws" x="395" y="34" width="140" height="46"/>
+          <text class="tc" x="465" y="55">S3：前端 SPA</text>
+          <text class="sub" x="465" y="70">静态资源</text>
+
+          <!-- API layer group -->
+          <rect class="grp" x="590" y="10" width="345" height="230"/>
+          <text class="glab" x="600" y="26">API 层</text>
+          <rect class="node aws" x="605" y="34" width="150" height="46"/>
+          <text class="tc" x="680" y="62">API Gateway</text>
+          <rect class="node lam" x="775" y="34" width="150" height="46"/>
+          <text class="tc" x="850" y="55">Lambda：授权器</text>
+          <text class="sub" x="850" y="70">HTTP Basic 认证</text>
+          <rect class="node aws" x="775" y="104" width="150" height="52"/>
+          <text class="tc" x="850" y="124">SSM SecureString</text>
+          <text class="sub" x="850" y="140">/tpot-booking/</text>
+          <text class="sub" x="850" y="152">basic-auth-credentials</text>
+          <rect class="node lam" x="605" y="110" width="150" height="46"/>
+          <text class="tc" x="680" y="138">Lambda：api</text>
+
+          <!-- State group -->
+          <rect class="grp" x="590" y="270" width="345" height="230"/>
+          <text class="glab" x="600" y="286">State — DynamoDB</text>
+          <rect class="node ddb" x="605" y="296" width="315" height="52"/>
+          <text class="t" x="617" y="316">TpotBookingTable</text>
+          <text class="sub" x="762" y="340" text-anchor="start">预约 + 历史 + instanceType-status-index GSI</text>
+          <rect class="node ddb" x="605" y="360" width="315" height="52"/>
+          <text class="t" x="617" y="380">TpotNotificationConfigTable</text>
+          <text class="sub" x="762" y="404" text-anchor="start">飞书 webhook 配置（configId=global）</text>
+          <rect class="node ddb" x="605" y="424" width="315" height="52"/>
+          <text class="t" x="617" y="444">TpotDeploymentPlanTable</text>
+          <text class="sub" x="762" y="468" text-anchor="start">部署方案</text>
+
+          <!-- EventBridge schedules group -->
+          <rect class="grp" x="30" y="150" width="220" height="200"/>
+          <text class="glab" x="40" y="166">EventBridge 定时器</text>
+          <rect class="node sched" x="45" y="176" width="190" height="42"/>
+          <text class="tc" x="140" y="202">每 1 分钟</text>
+          <rect class="node sched" x="45" y="230" width="190" height="42"/>
+          <text class="tc" x="140" y="251">每 2 分钟</text>
+          <text class="sub" x="140" y="265">check_progress</text>
+          <rect class="node sched" x="45" y="292" width="190" height="42"/>
+          <text class="tc" x="140" y="318">每 15 分钟</text>
+
+          <!-- Lambdas -->
+          <rect class="node lam" x="300" y="176" width="160" height="42"/>
+          <text class="tc" x="380" y="202">Lambda：poller</text>
+          <rect class="node lam" x="300" y="238" width="160" height="42"/>
+          <text class="tc" x="380" y="264">Lambda：deployer</text>
+          <rect class="node lam" x="300" y="300" width="160" height="42"/>
+          <text class="tc" x="380" y="322">Lambda：orphan-cleaner</text>
+
+          <!-- Compute group -->
+          <rect class="grp" x="300" y="392" width="290" height="96"/>
+          <text class="glab" x="310" y="408">GPU 计算</text>
+          <rect class="node aws" x="315" y="416" width="260" height="62"/>
+          <text class="tc" x="445" y="436">EC2 Spot GPU 实例</text>
+          <text class="sub" x="445" y="452">H200 / B200 / B300</text>
+          <text class="sub" x="445" y="467">NVMe 上 docker-compose SGLang</text>
+
+          <!-- S3 compose bucket -->
+          <rect class="node aws" x="30" y="416" width="230" height="46"/>
+          <text class="tc" x="145" y="438">S3：compose-files 桶</text>
+          <text class="sub" x="145" y="453">7 个 SGLang 拓扑</text>
+
+          <!-- Notifications -->
+          <rect class="node ext" x="315" y="540" width="260" height="46"/>
+          <text class="tc" x="445" y="562">飞书 / Lark webhook</text>
+          <text class="sub" x="445" y="577">运行时从 DynamoDB 读取</text>
+          <rect class="node aws" x="315" y="606" width="260" height="42"/>
+          <text class="tc" x="445" y="632">SNS 兜底主题（fallback）</text>
+
+          <!-- Edges -->
+          <!-- user -> cloudfront -->
+          <path class="edge" d="M180,47 L235,55" marker-end="url(#arrow)"/>
+          <!-- cf -> s3 frontend -->
+          <path class="edge" d="M375,57 L395,57" marker-end="url(#arrow)"/>
+          <!-- cf -> apigw -->
+          <path class="edge" d="M375,50 C500,20 560,44 605,52" marker-end="url(#arrow)"/>
+          <text class="elab" x="470" y="24">/api/* 重写到 /stage</text>
+          <!-- apigw -> authz -->
+          <path class="edge" d="M755,52 L775,55" marker-end="url(#arrow)"/>
+          <!-- authz -> ssm (dashed reads) -->
+          <path class="edash" d="M850,80 L850,104" marker-end="url(#arrow)"/>
+          <text class="elab" x="856" y="96">读取</text>
+          <!-- apigw -> api lambda -->
+          <path class="edge" d="M680,80 L680,110" marker-end="url(#arrow)"/>
+          <!-- api lambda -> ddb (3 tables) -->
+          <path class="edge" d="M680,156 C680,240 640,270 660,296" marker-end="url(#arrow)"/>
+          <path class="edge" d="M700,156 C740,250 760,300 740,360" marker-end="url(#arrow)"/>
+          <path class="edge" d="M720,156 C800,280 820,360 800,424" marker-end="url(#arrow)"/>
+          <!-- api lambda -> deployer (reuse on override) -->
+          <path class="edge" d="M605,140 C520,150 490,220 460,244" marker-end="url(#arrow)"/>
+          <text class="elab" x="470" y="150">复用（reuse on override）</text>
+          <!-- schedules -> lambdas -->
+          <path class="edge" d="M235,197 L300,197" marker-end="url(#arrow)"/>
+          <path class="edge" d="M235,251 L300,257" marker-end="url(#arrow)"/>
+          <path class="edge" d="M235,313 L300,319" marker-end="url(#arrow)"/>
+          <!-- poller -> ddb scan -->
+          <path class="edge" d="M460,190 C540,196 560,290 605,312" marker-end="url(#arrow)"/>
+          <text class="elab" x="486" y="188">扫描 polling 预约</text>
+          <!-- poller -> ec2 (RunInstances Spot; B300 direct) -->
+          <path class="edge" d="M400,218 C405,320 420,380 435,416" marker-end="url(#arrow)"/>
+          <text class="elab" x="404" y="360">RunInstances Spot；B300 直启</text>
+          <!-- poller -> deployer async -->
+          <path class="edge" d="M355,218 L370,238" marker-end="url(#arrow)"/>
+          <text class="elab" x="360" y="234">异步调用</text>
+          <!-- deployer -> ec2 (SSM RAID + compose up) -->
+          <path class="edge" d="M380,280 C440,340 450,380 450,416" marker-end="url(#arrow)"/>
+          <text class="elab" x="456" y="368">SSM：NVMe RAID + docker compose up</text>
+          <!-- deployer -> s3 compose (pull topology) -->
+          <path class="edge" d="M300,270 C180,320 150,380 150,416" marker-end="url(#arrow)"/>
+          <text class="elab" x="70" y="392">拉取拓扑</text>
+          <!-- deployer -> ddb bookings -->
+          <path class="edge" d="M460,258 C560,280 570,300 605,318" marker-end="url(#arrow)"/>
+          <!-- orphan -> ec2 (reap strays) -->
+          <path class="edge" d="M380,342 C400,370 430,392 448,416" marker-end="url(#arrow)"/>
+          <text class="elab" x="384" y="384">回收游离实例</text>
+          <!-- orphan -> ddb -->
+          <path class="edge" d="M460,318 C560,340 575,360 605,372" marker-end="url(#arrow)"/>
+          <!-- feishu fanout: ec2 area lambdas -> feishu -->
+          <path class="edge" d="M420,488 L435,540" marker-end="url(#arrow)"/>
+          <!-- feishu -> sns fallback -->
+          <path class="edash" d="M445,586 L445,606" marker-end="url(#arrow)"/>
+          <text class="elab" x="452" y="600">SNS 兜底</text>
+        </svg>
+      </div>
+      <figcaption>
+        架构示意图（内联 SVG，离线可渲染）。可编辑源文件见
+        <a href="../architecture/architecture.drawio">docs/architecture/architecture.drawio</a>，
+        以及提交在版本库中的 Mermaid 源
+        <a href="../architecture/README.md">docs/architecture/README.md</a>。
+      </figcaption>
+    </figure>
+
+    <h3>静态 SPA（S3 + CloudFront）</h3>
+    <p>
+      React/Vite 构建产物存放在 <strong>S3</strong> 桶中，前面由 <strong>CloudFront</strong> 分发。
+      用户直接访问 CloudFront 域名即可打开自助门户。
+    </p>
+
+    <h3>API（CloudFront /api/* → API Gateway + 授权器 + SSM）</h3>
+    <p>
+      <strong>CloudFront</strong> 把 <code>/api/*</code> 请求转发到 <strong>API Gateway</strong>
+      （一个 CloudFront Function 将 <code>/api/...</code> 重写为 <code>/&lt;stage&gt;/...</code>）。
+      API Gateway 使用一个 <strong>Lambda 授权器</strong> 做 HTTP Basic 认证，校验的凭据来自
+      <strong>SSM SecureString</strong> 参数 <code>/tpot-booking/basic-auth-credentials</code>，
+      通过后再调用 <strong><code>api</code> Lambda</strong>。仓库内不含任何凭据，需由运维方自行配置。
+    </p>
+
+    <h3>状态存储 — DynamoDB（3 张表）</h3>
+    <table>
+      <thead>
+        <tr><th>表名</th><th>作用</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>TpotBookingTable</code></td>
+          <td>预约（bookings）及其状态历史，带一个 <code>instanceType-status-index</code> GSI。</td>
+        </tr>
+        <tr>
+          <td><code>TpotNotificationConfigTable</code></td>
+          <td>飞书 webhook 配置（<code>configId=global</code>）。</td>
+        </tr>
+        <tr>
+          <td><code>TpotDeploymentPlanTable</code></td>
+          <td>部署方案（deployment plans）。</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3><code>poller</code> Lambda（EventBridge 每 1 分钟）</h3>
+    <p>
+      EventBridge 每分钟触发一次。它扫描处于 <code>polling</code> 状态的预约，并在第一个有容量的
+      区域 / 可用区里直接启动一个 <strong>Spot GPU</strong> 实例（带 Spot 市场选项的
+      <code>RunInstances</code>），可用区到子网的映射来自 <code>SUBNET_MAP_CONFIG</code>。
+      B300 / B200 / H200 走 <strong>直接启动（direct-launch）</strong> 路径（对于 B300 短暂的容量窗口，
+      先探测再启动太慢）。成功后它用条件写把预约翻转为 <code>launching</code>（避免重复启动），
+      并异步调用 deployer。
+    </p>
+
+    <h3><code>deployer</code> Lambda（两阶段）</h3>
+    <p>
+      <strong>阶段 1（<code>deploy</code>，由 poller 调用）：</strong> 等待 SSM 可达，然后下发一条长时运行的
+      <strong>SSM</strong> 命令，配置 <strong>NVMe RAID</strong>、下载模型，并对所选 SGLang 拓扑执行
+      <code>docker compose</code> pull + up。
+      <strong>阶段 2（<code>check_progress</code>，EventBridge 每 2 分钟）：</strong> 轮询 SSM 命令与服务健康端点，
+      随后把预约标记为 <code>ready</code> 或 <code>failed</code>。
+    </p>
+
+    <h3><code>orphan-cleaner</code> Lambda（EventBridge 每 15 分钟）</h3>
+    <p>
+      每 15 分钟运行一次，回收那些已不再被任何活跃预约跟踪的、带标签的游离 Spot 实例，作为成本安全网。
+    </p>
+
+    <h3>通知（飞书 / Lark webhook + SNS 兜底）</h3>
+    <p>
+      每一个负责状态变更的 Lambda 都会推送到 <strong>飞书（Lark）webhook</strong>（并以 <strong>SNS</strong>
+      作为兜底主题）。webhook URL 在运行时从 DynamoDB 的通知配置表读取，而不是写死在代码里。
+    </p>
+
+    <h3>Compose 文件（7 个 SGLang 拓扑）</h3>
+    <p>
+      7 个 SGLang <code>docker-compose-*.yaml</code> 拓扑与 deployer 打包在一起，并部署到一个 S3 compose 桶；
+      它们可以在 S3 上更新而 <strong>无需重新部署</strong>（redeploy），详见
+      <a href="../../cdk/docs/UPDATE-COMPOSE.md">cdk/docs/UPDATE-COMPOSE.md</a>。
+    </p>
+
+    <h2 id="cost">成本与清理</h2>
+    <p>
+      Spot GPU 容量正是这套方案的核心价值：你只为短暂的测试窗口付费，而不必长期持有一个 Capacity Block 预留。
+      代价是 Spot 实例可能被中断，但这对临时测试是可以接受的。
+    </p>
+    <p>
+      <strong>用完后一定要拆环境</strong>——一个被遗忘的 GPU 实例非常烧钱。<code>orphan-cleaner</code> Lambda
+      会按计划回收游离实例作为安全网，但你仍应主动执行清理并核对。清理步骤见
+      <a href="../TEARDOWN.md">docs/TEARDOWN.md</a>。
+    </p>
+
+    <h2 id="further">上手 / 延伸阅读</h2>
+    <ul>
+      <li><a href="../QUICKSTART.md">docs/QUICKSTART.md</a> — 部署上手指南（先构建前端、<code>cdk deploy</code>、设置 <code>SUBNET_MAP_CONFIG</code>、上传 SPA、配置飞书 webhook）。</li>
+      <li><a href="../TEARDOWN.md">docs/TEARDOWN.md</a> — 清理与成本治理指南。</li>
+      <li><a href="../architecture/README.md">docs/architecture/README.md</a> — 权威架构文档（提交在库中的 Mermaid 图与组件走读）。</li>
+      <li><a href="../architecture/architecture.drawio">docs/architecture/architecture.drawio</a> — 可编辑的 draw.io（diagrams.net）架构图源文件。</li>
+      <li><a href="../../cdk/docs/UPDATE-COMPOSE.md">cdk/docs/UPDATE-COMPOSE.md</a> — 如何在不重新部署的情况下更新 S3 中的 compose 文件。</li>
+    </ul>
+
+    <footer>
+      <p>
+        本仓库是一个 AWS 示例，以 <strong>MIT-0</strong> 许可证发布；作为示例（sample）提供，而非受支持的产品。
+        返回仓库根 README：<a href="../../README.md">README.md</a>。
+      </p>
+      <p class="en">
+        This repository is an AWS sample licensed under MIT-0. It is provided as a sample,
+        not a supported product. Back to the repository <a href="../../README.md">README.md</a>.
+      </p>
+    </footer>
+
+  </main>
+</body>
+</html>

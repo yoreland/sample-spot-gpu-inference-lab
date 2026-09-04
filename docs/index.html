@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spot GPU 推理测试环境 · 文档站</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel-2: #1c2431;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #9aa7b4;
+      --accent: #ff9900;
+      --accent-2: #4f9dff;
+      --green: #3fb950;
+      --max: 860px;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC",
+        "WenQuanYi Micro Hei", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.75;
+      font-size: 17px;
+    }
+    .wrap { max-width: var(--max); margin: 0 auto; padding: 0 20px 80px; }
+    header.hero {
+      background: linear-gradient(135deg, #12233b 0%, #0d1117 60%);
+      border-bottom: 1px solid var(--border);
+      padding: 56px 20px 40px;
+    }
+    header.hero .inner { max-width: var(--max); margin: 0 auto; }
+    .kicker {
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: .06em;
+      font-size: 13px;
+      text-transform: uppercase;
+      margin: 0 0 10px;
+    }
+    h1 {
+      font-size: 32px;
+      line-height: 1.3;
+      margin: 0 0 16px;
+      font-weight: 700;
+    }
+    .lede { color: var(--muted); font-size: 18px; margin: 0; }
+    .meta { color: var(--muted); font-size: 14px; margin-top: 18px; }
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 12px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-right: 8px;
+    }
+    h2 {
+      font-size: 23px;
+      margin: 48px 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    p { margin: 12px 0; }
+    a { color: var(--accent-2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .cards { display: grid; gap: 16px; margin: 20px 0; }
+    @media (min-width: 620px) { .cards { grid-template-columns: 1fr 1fr; } }
+    a.card {
+      display: block;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+      padding: 18px 20px;
+      color: var(--text);
+      transition: border-color .15s ease, transform .15s ease;
+    }
+    a.card:hover { border-color: var(--accent-2); text-decoration: none; transform: translateY(-2px); }
+    a.card .card-title { font-size: 18px; font-weight: 700; margin: 0 0 6px; }
+    a.card .card-title .en { color: var(--muted); font-weight: 400; font-size: 14px; }
+    a.card .card-desc { color: var(--muted); font-size: 14px; margin: 0; line-height: 1.6; }
+    .tag {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+      vertical-align: middle;
+    }
+    .note {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--muted);
+      font-size: 15px;
+      margin: 24px 0;
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      margin-top: 56px;
+      padding-top: 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    footer .en { color: #7d8894; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="inner">
+      <p class="kicker">AWS Sample · Spot GPU · SGLang</p>
+      <h1>Spot GPU 推理测试环境 · 文档站</h1>
+      <p class="lede">
+        「低成本、一键、自助」的 AWS Spot GPU 推理测试环境。这里汇总了项目的博客文章、
+        架构说明、可编辑架构图，以及部署与清理指南。
+      </p>
+      <p class="meta">
+        <span class="badge">开源示例 / AWS Sample</span>
+        <span class="badge">许可证 MIT-0</span>
+        <span class="badge">配套博客代码库</span>
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h2>从这里开始</h2>
+    <p>选择一个目的地开始浏览：</p>
+
+    <div class="cards">
+      <a class="card" href="blog/index.html">
+        <p class="card-title">博客文章 <span class="en">Blog</span></p>
+        <p class="card-desc">
+          完整故事：三大痛点、Spot GPU 快速路径、React 自助门户、留痕审计，以及内嵌的架构走读图（HTML）。
+        </p>
+      </a>
+
+      <a class="card" href="architecture/README.md">
+        <p class="card-title">架构文档 <span class="en">Architecture</span><span class="tag">Markdown 源</span></p>
+        <p class="card-desc">
+          以 Mermaid 图记录的权威架构说明：组件、数据流、EventBridge 调度与 CloudFormation 输出。
+        </p>
+      </a>
+
+      <a class="card" href="architecture/architecture.drawio">
+        <p class="card-title">可编辑架构图 <span class="en">draw.io 源</span><span class="tag">.drawio 源</span></p>
+        <p class="card-desc">
+          draw.io / diagrams.net 可打开的 mxGraph XML 源文件，使用 AWS 官方图标，便于二次编辑。
+        </p>
+      </a>
+
+      <a class="card" href="QUICKSTART.md">
+        <p class="card-title">部署上手 <span class="en">Quickstart</span><span class="tag">Markdown 源</span></p>
+        <p class="card-desc">
+          在自己的 AWS 账户里部署这套 CDK 控制面与自助门户的分步指南。
+        </p>
+      </a>
+
+      <a class="card" href="TEARDOWN.md">
+        <p class="card-title">清理 / 成本治理 <span class="en">Teardown</span><span class="tag">Markdown 源</span></p>
+        <p class="card-desc">
+          用完即拆：如何清理资源、控制成本，以及 orphan-cleaner 安全网的作用。
+        </p>
+      </a>
+    </div>
+
+    <div class="note">
+      提示：标注「Markdown 源」的链接在 GitHub Pages 上会以纯文本源码的形式展示（本站禁用了 Jekyll，
+      不会把 Markdown 转成 HTML）。博客文章与本页是站点的主要 HTML 页面。
+    </div>
+
+    <footer>
+      <p>
+        本仓库是一个 AWS 示例，以 <strong>MIT-0</strong> 许可证发布；作为示例（sample）提供，而非受支持的产品。
+        返回仓库 <a href="../README.md">README.md</a>。
+      </p>
+      <p class="en">
+        This repository is an AWS sample licensed under MIT-0. It is provided as a sample,
+        not a supported product.
+      </p>
+    </footer>
+  </main>
+</body>
+</html>
