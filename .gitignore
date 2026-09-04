@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+frontend/dist/
+cdk/frontend/dist/
+*.tsbuildinfo
+
+# CDK
+cdk.out/
+*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Environment / secrets
+.env
+.env.*
+*.local
+
+# OS / editor
+.DS_Store
